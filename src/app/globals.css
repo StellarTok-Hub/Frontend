@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  @apply bg-ink-950 text-white antialiased;
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-lg border border-white/10 bg-ink-950 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-brand focus:outline-none;
+  }
+}
+
+@layer base {
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    @apply outline-none ring-2 ring-brand-light ring-offset-2 ring-offset-ink-950;
+  }
+}
