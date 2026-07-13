@@ -361,7 +361,7 @@ Frontend/
 
 - The session cookie (`src/lib/session.ts`) is now HMAC-signed (`SESSION_SECRET`) and verified in middleware, so it can't be hand-edited to claim a different identity. Outside production it falls back to a random per-process secret so local dev needs no config; production requires a real `SESSION_SECRET` or the app refuses to boot.
 - Brand identity is still just "a connected wallet," but that claim is now backed by a signed cookie (`encodeWalletSession`) that middleware checks for `/brand`, not only a client-side component. There's still no real brand account system, and no cryptographic proof the visitor holds the wallet's private key — only that the server saw Freighter hand back that public key.
-- The in-memory rate limiter (`src/lib/rate-limit.ts`) doesn't share state across instances; a multi-instance deploy needs a shared store.
+- The in-memory rate limiter (`src/lib/rate-limit.ts`) doesn't share state across instances; a multi-instance deploy needs a shared store. It now keys on the proxy-appended `x-forwarded-for` hop rather than the client-supplied one (which was trivially spoofable), assuming a single trusted reverse proxy in front of the app.
 - The best-effort backend sync in `AuthContext` (`linkIdentity`) fails silently when there's no backend — the identity link still works locally (TikTok session + wallet are enough to unlock the UI), it just isn't persisted remotely yet.
 - USDC issuer addresses are intentionally unset by default (`STELLAR_USDC_ISSUER_*`) — verify independently before setting them.
 
