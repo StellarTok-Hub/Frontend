@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
     response.cookies.delete(STATE_COOKIE);
-    response.cookies.set(SESSION_COOKIE, encodeSession(profile), {
+    response.cookies.set(SESSION_COOKIE, await encodeSession(profile), {
       httpOnly: true,
       secure: request.nextUrl.protocol === 'https:',
       sameSite: 'lax',
