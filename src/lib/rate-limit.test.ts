@@ -12,4 +12,12 @@ describe('getClientKey', () => {
     const request = requestWithForwardedFor('203.0.113.5, 10.0.0.1');
     expect(getClientKey(request)).toBe('10.0.0.1');
   });
+
+  it('falls back to "unknown" when the header is missing', () => {
+    expect(getClientKey(requestWithForwardedFor(null))).toBe('unknown');
+  });
+
+  it('handles a single-hop header with no comma', () => {
+    expect(getClientKey(requestWithForwardedFor('203.0.113.5'))).toBe('203.0.113.5');
+  });
 });
