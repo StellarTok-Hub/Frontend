@@ -26,7 +26,8 @@ vi.mock('@stellar/stellar-sdk', async (importOriginal) => {
   };
 });
 
-const { buildPaymentTransaction, describeSubmissionError } = await import('./stellar');
+const { buildPaymentTransaction, describeSubmissionError, InvalidPaymentError } =
+  await import('./stellar');
 
 const SOURCE = 'GBRVNONUCMSB3ARYCNXH35FUBRYWABMTZH6ABOPLP7IXHWHVIB3OT3EG';
 const DEST = 'GDL6PDJP4I5MF6FIODERJDGHTJ3H57PRMI367FGW2R7CHKSDSJNX7PSV';
@@ -74,6 +75,19 @@ describe('buildPaymentTransaction', () => {
     expect(op.asset.isNative()).toBe(false);
     expect(op.asset.getCode()).toBe('USDC');
     expect(op.asset.getIssuer()).toBe(process.env.STELLAR_USDC_ISSUER_TESTNET);
+  });
+
+  it('rejects an invalid amount before ever calling loadAccount', async () => {
+    await expect(
+      buildPaymentTransaction({
+        sourcePublicKey: SOURCE,
+        destinationPublicKey: DEST,
+        asset: 'XLM',
+        amount: 'not-a-number',
+      }),
+    ).rejects.toThrow(InvalidPaymentError);
+
+    expect(loadAccountMock).not.toHaveBeenCalled();
   });
 });
 
