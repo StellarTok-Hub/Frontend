@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { decodeSession, SESSION_COOKIE } from '@/lib/session';
 
 export async function GET(request: NextRequest) {
-  const profile = decodeSession(request.cookies.get(SESSION_COOKIE)?.value);
+  const profile = await decodeSession(request.cookies.get(SESSION_COOKIE)?.value);
   return NextResponse.json({ tiktokProfile: profile });
 }
 
