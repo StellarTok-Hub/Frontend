@@ -29,6 +29,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing signedXdr.' }, { status: 400 });
   }
 
+  // This route is intentionally unauthenticated (see the comment above) and
+  // rate-limited only by IP, so it's worth rejecting obviously-not-XDR input
+  // with a cheap regex/length check before handing it to the SDK parser —
+  // a real single-operation transaction envelope is a few hundred base64
+  // characters, nowhere near this cap.
+  if (signedXdr.length > 8192 || !/^[A-Za-z0-9+/]+=*$/.test(signedXdr)) {
+    return NextResponse.json({ error: 'Malformed signedXdr.' }, { status: 400 });
+  }
+
   try {
     const hash = await submitSignedTransaction(signedXdr);
     return NextResponse.json({ hash });
