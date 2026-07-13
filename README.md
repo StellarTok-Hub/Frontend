@@ -330,6 +330,7 @@ Frontend/
 │   │   └── api/
 │   │       ├── auth/tiktok/start/      # Starts OAuth, sets CSRF state cookie
 │   │       ├── session/                # Read/clear the TikTok session cookie
+│   │       ├── session/wallet/         # Set/clear the signed wallet session cookie (gates /brand)
 │   │       ├── tip/                    # Server-only tip tx build (validated, rate-limited)
 │   │       ├── escrow/fund/            # Server-only escrow funding tx build
 │   │       └── stellar/submit/         # Server-only signed-tx submission (shared by tip + escrow)
