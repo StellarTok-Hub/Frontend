@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { decodeSession, decodeWalletSession, encodeSession, encodeWalletSession } from './session';
 import type { TikTokProfile } from './tiktok';
 
@@ -11,9 +11,26 @@ const profile: TikTokProfile = {
 
 const VALID_WALLET_ADDRESS = 'GAK5NC4G3IB4XQ54EIP7ZQ6NAMEB4C6MMMDDZ5B6LWTP4YFUCPYAWVU3';
 
-beforeAll(() => {
-  process.env.SESSION_SECRET = 'test-secret-'.repeat(4);
-});
+/** Splits a `payload.signature` cookie, asserting both segments exist (they always do for a value we just signed). */
+function splitCookie(cookie: string): [string, string] {
+  const separatorIndex = cookie.lastIndexOf('.');
+  if (separatorIndex === -1) throw new Error(`Not a signed cookie: ${cookie}`);
+  return [cookie.slice(0, separatorIndex), cookie.slice(separatorIndex + 1)];
+}
+
+/**
+ * Flips the *first* character of a base64url string. Flipping the last
+ * character instead is unreliable here: the final character of a base64
+ * group can encode "don't care" padding bits that get discarded on decode
+ * (e.g. for a 32-byte HMAC-SHA256 signature, the last character only
+ * carries 4 significant bits), so two different last characters can
+ * legitimately decode to the identical byte string — which isn't tampering
+ * at all, it's just an alternate encoding of the same bytes. The first
+ * character is always byte-aligned and always significant.
+ */
+function flipFirstChar(value: string): string {
+  return (value[0] === 'a' ? 'b' : 'a') + value.slice(1);
+}
 
 describe('encodeSession / decodeSession', () => {
   it('round-trips a valid signed session', async () => {
@@ -23,16 +40,14 @@ describe('encodeSession / decodeSession', () => {
 
   it('rejects a cookie with a tampered payload', async () => {
     const cookie = await encodeSession(profile);
-    const [payload, signature] = cookie.split('.');
-    const tamperedPayload = payload.slice(0, -1) + (payload.at(-1) === 'a' ? 'b' : 'a');
-    expect(await decodeSession(`${tamperedPayload}.${signature}`)).toBeNull();
+    const [payload, signature] = splitCookie(cookie);
+    expect(await decodeSession(`${flipFirstChar(payload)}.${signature}`)).toBeNull();
   });
 
   it('rejects a cookie with a tampered signature', async () => {
     const cookie = await encodeSession(profile);
-    const [payload, signature] = cookie.split('.');
-    const tamperedSignature = signature.slice(0, -1) + (signature.at(-1) === 'a' ? 'b' : 'a');
-    expect(await decodeSession(`${payload}.${tamperedSignature}`)).toBeNull();
+    const [payload, signature] = splitCookie(cookie);
+    expect(await decodeSession(`${payload}.${flipFirstChar(signature)}`)).toBeNull();
   });
 
   it('rejects a value that is missing the signature segment entirely', async () => {
@@ -52,8 +67,7 @@ describe('encodeWalletSession / decodeWalletSession', () => {
 
   it('rejects a tampered wallet cookie', async () => {
     const cookie = await encodeWalletSession(VALID_WALLET_ADDRESS);
-    const [payload, signature] = cookie.split('.');
-    const tamperedSignature = signature.slice(0, -1) + (signature.at(-1) === 'a' ? 'b' : 'a');
-    expect(await decodeWalletSession(`${payload}.${tamperedSignature}`)).toBeNull();
+    const [payload, signature] = splitCookie(cookie);
+    expect(await decodeWalletSession(`${payload}.${flipFirstChar(signature)}`)).toBeNull();
   });
 });
