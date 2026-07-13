@@ -26,7 +26,19 @@ export function isRateLimited(key: string): boolean {
   return false;
 }
 
+/**
+ * `x-forwarded-for` is a comma-separated hop list that each proxy in the
+ * chain *appends* to — so the leftmost entry is whatever the client put
+ * there themselves, and the rightmost entry is the one added by the proxy
+ * closest to this server. Keying on the leftmost entry (the old behavior)
+ * let any client bypass rate limiting entirely by sending a fresh fake
+ * `x-forwarded-for` value on every request. This assumes a single trusted
+ * reverse proxy in front of the app (true for a standard Vercel/Nginx
+ * deploy); a multi-hop setup would need to trust a specific hop count
+ * instead of "last".
+ */
 export function getClientKey(request: Request): string {
   const forwardedFor = request.headers.get('x-forwarded-for');
-  return forwardedFor?.split(',')[0]?.trim() ?? 'unknown';
+  const hops = forwardedFor?.split(',').map((hop) => hop.trim()) ?? [];
+  return hops.at(-1) || 'unknown';
 }
