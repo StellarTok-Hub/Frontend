@@ -94,6 +94,31 @@ describe('buildPaymentTransaction', () => {
     expect(loadAccountMock).not.toHaveBeenCalled();
   });
 
+  it('refuses to guess a USDC issuer when none is configured', async () => {
+    // There's deliberately no built-in default for the USDC issuer (a wrong
+    // one would silently misroute real payments — see env.server.ts). This
+    // is the regression test for that: unset the global test default and
+    // reload the module so env.server.ts re-parses without it.
+    const original = process.env.STELLAR_USDC_ISSUER_TESTNET;
+    delete process.env.STELLAR_USDC_ISSUER_TESTNET;
+    vi.resetModules();
+    try {
+      const unconfigured = await import('./stellar');
+      loadAccountMock.mockResolvedValue(new Account(SOURCE, '100'));
+      await expect(
+        unconfigured.buildPaymentTransaction({
+          sourcePublicKey: SOURCE,
+          destinationPublicKey: DEST,
+          asset: 'USDC',
+          amount: '5',
+        }),
+      ).rejects.toThrow(unconfigured.InvalidPaymentError);
+    } finally {
+      process.env.STELLAR_USDC_ISSUER_TESTNET = original;
+      vi.resetModules();
+    }
+  });
+
   it('truncates a memo to the 28-byte Stellar text-memo limit', async () => {
     loadAccountMock.mockResolvedValue(new Account(SOURCE, '100'));
 
