@@ -205,7 +205,8 @@ sequenceDiagram
 ## Features
 
 - 🔐 **Auth** — real TikTok Login Kit OAuth (CSRF-protected via a state cookie) plus Freighter wallet connect. `AuthContext` derives a linked identity client-side the moment both are present, and best-effort syncs it to the backend.
-- 🛡️ **Route protection** — middleware redirects unauthenticated requests away from `/dashboard`; the brand portal is gated behind a connected wallet.
+- 🛡️ **Route protection** — middleware verifies a signed session cookie before allowing `/dashboard`, and a signed wallet cookie before allowing `/brand`; both redirect unauthenticated requests before the page ever renders, not just after a client-side check.
+- 🔒 **Baseline security headers** — CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy` applied to every response (`next.config.mjs`), aimed at the pages that request a wallet-transaction signature.
 - 💸 **Public tipping profile** — `stellartok.app/creatorname` page rendering a creator's latest TikTok videos with a "Send Tip" action per video, with instant client-side amount validation and Horizon errors (e.g. missing trustlines) translated into plain language.
 - 🎮 **Creator dashboard**
   - _Live Stream Settings_ — OBS Browser Source URL, alert-rule config, a working live overlay page with a `?simulate=1` preview mode.
