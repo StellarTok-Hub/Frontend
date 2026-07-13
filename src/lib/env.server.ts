@@ -18,6 +18,16 @@ const schema = z.object({
   platformFee: z.coerce.number().min(0).max(1),
   usdcIssuerMainnet: z.string(),
   usdcIssuerTestnet: z.string(),
+  /**
+   * Validated here purely for Node fail-fast boot behavior. `src/lib/session.ts`
+   * reads `process.env.SESSION_SECRET` directly rather than importing this
+   * module, because it's also loaded by `src/middleware.ts` on the Edge
+   * runtime, where this Zod-validated module (guarded to Node-only in
+   * `src/instrumentation.ts`) isn't safe to import.
+   */
+  sessionSecret: z
+    .string()
+    .min(32, 'SESSION_SECRET must be at least 32 characters — generate one with `openssl rand -base64 32`.'),
 });
 
 function parseOrThrow(): z.infer<typeof schema> {
@@ -33,6 +43,7 @@ function parseOrThrow(): z.infer<typeof schema> {
     platformFee: process.env.NEXT_PUBLIC_PLATFORM_FEE ?? '0.01',
     usdcIssuerMainnet: process.env.STELLAR_USDC_ISSUER_MAINNET ?? '',
     usdcIssuerTestnet: process.env.STELLAR_USDC_ISSUER_TESTNET ?? '',
+    sessionSecret: process.env.SESSION_SECRET ?? '',
   });
 
   if (!result.success) {
