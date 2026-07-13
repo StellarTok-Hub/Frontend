@@ -1,6 +1,30 @@
+/**
+ * No page in this app embeds another page in an iframe (grep confirms it),
+ * and several pages exist specifically to request a wallet-transaction
+ * signature — the kind of UI a clickjacking overlay targets. Denying
+ * framing outright costs nothing here. This doesn't affect the OBS
+ * overlay page: OBS Browser Source loads a URL directly in its own
+ * embedded browser, it doesn't embed it via <iframe> in another document,
+ * so frame-ancestors has no effect on it.
+ */
+const securityHeaders = [
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY',
+  },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: securityHeaders,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       // TikTok serves thumbnails/avatars from many rotating CDN subdomains
