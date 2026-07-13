@@ -264,7 +264,7 @@ A pre-commit hook (Husky + lint-staged) runs ESLint and Prettier on staged files
 
 ### Environment Variables
 
-Copy `.env.example` to `.env.local` and fill in what you have — every field has a sensible local default except the two marked below:
+Copy `.env.example` to `.env.local` and fill in what you have — every field has a sensible local default except the ones marked below:
 
 ```bash
 cp .env.example .env.local
@@ -277,6 +277,13 @@ NEXT_PUBLIC_STELLARTOK_API_URL=http://localhost:4000
 # Canonical URL this app is deployed at — used for metadataBase, Open Graph
 # share previews, and the sitemap.
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Signs session cookies (TikTok identity + connected wallet). NO safe
+# default in production — falls back to a random per-process secret in
+# development only, so local work needs no config, but a production
+# deploy without this set refuses to boot. Generate with:
+# openssl rand -base64 32
+SESSION_SECRET=
 
 # TikTok Login Kit / API credentials
 NEXT_PUBLIC_TIKTOK_CLIENT_KEY=
