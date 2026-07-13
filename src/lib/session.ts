@@ -38,10 +38,18 @@ function toBase64Url(bytes: ArrayBuffer): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function fromBase64Url(value: string): Uint8Array {
+function fromBase64Url(value: string): Uint8Array<ArrayBuffer> {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
   const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
-  return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+  const binary = atob(padded);
+  // `new Uint8Array(length)` (unlike `Uint8Array.from`) is typed as backed
+  // by a concrete ArrayBuffer, not the wider ArrayBufferLike — required so
+  // this satisfies crypto.subtle.verify's BufferSource parameter below.
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 /** Signs an arbitrary string payload, returning `<base64url payload>.<base64url signature>`. */
