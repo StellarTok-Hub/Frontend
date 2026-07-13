@@ -44,8 +44,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetch('/api/session')
       .then((res) => res.json())
-      .then((data) => setTiktokProfile(data.tiktokProfile ?? null))
-      .catch(() => setTiktokProfile(null))
+      .then((data) => {
+        setTiktokProfile(data.tiktokProfile ?? null);
+        // Restores wallet state after a refresh — Freighter itself has no
+        // "still connected" callback, so without this a reload would show
+        // the user as wallet-disconnected even though the signed cookie
+        // (and middleware's /brand gate) still consider them connected.
+        setWalletAddress(data.walletAddress ?? null);
+      })
+      .catch(() => {
+        setTiktokProfile(null);
+        setWalletAddress(null);
+      })
       .finally(() => setIsLoadingSession(false));
   }, []);
 
