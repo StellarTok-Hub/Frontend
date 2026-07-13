@@ -1,5 +1,63 @@
-import { describe, expect, it } from 'vitest';
-import { describeSubmissionError } from './stellar';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Account, TransactionBuilder } from '@stellar/stellar-sdk';
+import { networkPassphrase } from './stellar-network';
+
+const loadAccountMock = vi.fn();
+const submitTransactionMock = vi.fn();
+
+/**
+ * Only Horizon.Server is mocked (avoids a real network call to Horizon) —
+ * everything else (Account, Asset, Operation, TransactionBuilder) is the
+ * real SDK, so the built XDR is real and can be decoded back and asserted
+ * on rather than just checking that some string came out.
+ */
+vi.mock('@stellar/stellar-sdk', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    Horizon: {
+      ...actual.Horizon,
+      // Must be a real constructor function, not an arrow function — the
+      // real code does `new Horizon.Server(...)`.
+      Server: vi.fn().mockImplementation(function MockServer() {
+        return { loadAccount: loadAccountMock, submitTransaction: submitTransactionMock };
+      }),
+    },
+  };
+});
+
+const { buildPaymentTransaction, describeSubmissionError } = await import('./stellar');
+
+const SOURCE = 'GBRVNONUCMSB3ARYCNXH35FUBRYWABMTZH6ABOPLP7IXHWHVIB3OT3EG';
+const DEST = 'GDL6PDJP4I5MF6FIODERJDGHTJ3H57PRMI367FGW2R7CHKSDSJNX7PSV';
+
+beforeEach(() => {
+  loadAccountMock.mockReset();
+  submitTransactionMock.mockReset();
+});
+
+describe('buildPaymentTransaction', () => {
+  it('builds an XLM payment against the loaded source account', async () => {
+    loadAccountMock.mockResolvedValue(new Account(SOURCE, '100'));
+
+    const xdr = await buildPaymentTransaction({
+      sourcePublicKey: SOURCE,
+      destinationPublicKey: DEST,
+      asset: 'XLM',
+      amount: '5',
+    });
+
+    expect(loadAccountMock).toHaveBeenCalledWith(SOURCE);
+
+    const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase);
+    expect(tx.operations).toHaveLength(1);
+    const [op] = tx.operations;
+    if (op.type !== 'payment') throw new Error('expected a payment operation');
+    expect(op.destination).toBe(DEST);
+    expect(op.amount).toBe('5.0000000');
+    expect(op.asset.isNative()).toBe(true);
+  });
+});
 
 describe('describeSubmissionError', () => {
   it('maps op_no_trust to a friendly trustline message', () => {
