@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Account, TransactionBuilder } from '@stellar/stellar-sdk';
+import { Account, Transaction, TransactionBuilder } from '@stellar/stellar-sdk';
+import type * as StellarSdk from '@stellar/stellar-sdk';
 import { networkPassphrase } from './stellar-network';
 
 const loadAccountMock = vi.fn();
@@ -12,7 +13,7 @@ const submitTransactionMock = vi.fn();
  * on rather than just checking that some string came out.
  */
 vi.mock('@stellar/stellar-sdk', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = await importOriginal<typeof StellarSdk>();
   return {
     ...actual,
     Horizon: {
@@ -25,6 +26,14 @@ vi.mock('@stellar/stellar-sdk', async (importOriginal) => {
     },
   };
 });
+
+/** fromXDR returns Transaction | FeeBumpTransaction; every test here builds a plain (non-fee-bump) payment. */
+function decodePaymentTx(xdr: string): Transaction {
+  const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase);
+  if (!(tx instanceof Transaction))
+    throw new Error('expected a plain Transaction, not a fee-bump one');
+  return tx;
+}
 
 const {
   buildPaymentTransaction,
@@ -54,10 +63,10 @@ describe('buildPaymentTransaction', () => {
 
     expect(loadAccountMock).toHaveBeenCalledWith(SOURCE);
 
-    const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase);
+    const tx = decodePaymentTx(xdr);
     expect(tx.operations).toHaveLength(1);
     const [op] = tx.operations;
-    if (op.type !== 'payment') throw new Error('expected a payment operation');
+    if (!op || op.type !== 'payment') throw new Error('expected a payment operation');
     expect(op.destination).toBe(DEST);
     expect(op.amount).toBe('5.0000000');
     expect(op.asset.isNative()).toBe(true);
@@ -73,9 +82,9 @@ describe('buildPaymentTransaction', () => {
       amount: '10',
     });
 
-    const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase);
+    const tx = decodePaymentTx(xdr);
     const [op] = tx.operations;
-    if (op.type !== 'payment') throw new Error('expected a payment operation');
+    if (!op || op.type !== 'payment') throw new Error('expected a payment operation');
     expect(op.asset.isNative()).toBe(false);
     expect(op.asset.getCode()).toBe('USDC');
     expect(op.asset.getIssuer()).toBe(process.env.STELLAR_USDC_ISSUER_TESTNET);
@@ -131,7 +140,7 @@ describe('buildPaymentTransaction', () => {
       memo: longMemo,
     });
 
-    const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase);
+    const tx = decodePaymentTx(xdr);
     expect(tx.memo.type).toBe('text');
     expect(String(tx.memo.value)).toBe(longMemo.slice(0, 28));
   });
@@ -146,7 +155,7 @@ describe('buildPaymentTransaction', () => {
       amount: '1',
     });
 
-    const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase);
+    const tx = decodePaymentTx(xdr);
     expect(tx.memo.type).toBe('none');
   });
 });
