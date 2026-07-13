@@ -89,6 +89,37 @@ describe('buildPaymentTransaction', () => {
 
     expect(loadAccountMock).not.toHaveBeenCalled();
   });
+
+  it('truncates a memo to the 28-byte Stellar text-memo limit', async () => {
+    loadAccountMock.mockResolvedValue(new Account(SOURCE, '100'));
+
+    const longMemo = 'this_memo_is_way_longer_than_the_stellar_limit';
+    const xdr = await buildPaymentTransaction({
+      sourcePublicKey: SOURCE,
+      destinationPublicKey: DEST,
+      asset: 'XLM',
+      amount: '1',
+      memo: longMemo,
+    });
+
+    const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase);
+    expect(tx.memo.type).toBe('text');
+    expect(String(tx.memo.value)).toBe(longMemo.slice(0, 28));
+  });
+
+  it('omits the memo when none is given', async () => {
+    loadAccountMock.mockResolvedValue(new Account(SOURCE, '100'));
+
+    const xdr = await buildPaymentTransaction({
+      sourcePublicKey: SOURCE,
+      destinationPublicKey: DEST,
+      asset: 'XLM',
+      amount: '1',
+    });
+
+    const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase);
+    expect(tx.memo.type).toBe('none');
+  });
 });
 
 describe('describeSubmissionError', () => {
