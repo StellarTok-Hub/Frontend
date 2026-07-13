@@ -8,9 +8,14 @@ import { Card, CardTitle } from '@/components/ui/Card';
 /**
  * Brands don't go through TikTok Login Kit — their identity for now is
  * just their Stellar wallet, since that's what actually funds an escrow.
- * Gating here (rather than a real backend-issued brand session) is a
- * known simplification: there's no brand account system yet, just "does
- * a wallet happen to be connected."
+ * `src/middleware.ts` now enforces this server-side via a signed wallet
+ * cookie (see `encodeWalletSession`), so this component is a UX layer
+ * (avoids a content flash, offers the connect button inline) rather than
+ * the only thing standing between an unconnected visitor and this page.
+ * The remaining known simplification: a signed wallet cookie proves the
+ * server saw this public key, not that the visitor holds its private key
+ * — there's still no real brand account system, and no challenge/response
+ * proving wallet ownership.
  */
 export function BrandGate({ children }: { children: ReactNode }) {
   const { walletAddress, isConnectingWallet } = useAuth();
