@@ -26,8 +26,12 @@ vi.mock('@stellar/stellar-sdk', async (importOriginal) => {
   };
 });
 
-const { buildPaymentTransaction, describeSubmissionError, InvalidPaymentError } =
-  await import('./stellar');
+const {
+  buildPaymentTransaction,
+  submitSignedTransaction,
+  describeSubmissionError,
+  InvalidPaymentError,
+} = await import('./stellar');
 
 const SOURCE = 'GBRVNONUCMSB3ARYCNXH35FUBRYWABMTZH6ABOPLP7IXHWHVIB3OT3EG';
 const DEST = 'GDL6PDJP4I5MF6FIODERJDGHTJ3H57PRMI367FGW2R7CHKSDSJNX7PSV';
@@ -119,6 +123,24 @@ describe('buildPaymentTransaction', () => {
 
     const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase);
     expect(tx.memo.type).toBe('none');
+  });
+});
+
+describe('submitSignedTransaction', () => {
+  it('parses the XDR and returns the hash Horizon reports', async () => {
+    loadAccountMock.mockResolvedValue(new Account(SOURCE, '100'));
+    const xdr = await buildPaymentTransaction({
+      sourcePublicKey: SOURCE,
+      destinationPublicKey: DEST,
+      asset: 'XLM',
+      amount: '1',
+    });
+    submitTransactionMock.mockResolvedValue({ hash: 'abc123hash' });
+
+    const hash = await submitSignedTransaction(xdr);
+
+    expect(hash).toBe('abc123hash');
+    expect(submitTransactionMock).toHaveBeenCalledTimes(1);
   });
 });
 
