@@ -374,8 +374,9 @@ This repository is the **frontend only**. Identity linking, tip detection on the
 
 **Done in this repo:**
 
-- [x] TikTok Login Kit OAuth + Freighter connect flow (CSRF-protected, session cookie)
-- [x] Route protection (middleware for `/dashboard`, wallet gate for `/brand`)
+- [x] TikTok Login Kit OAuth + Freighter connect flow (CSRF-protected, HMAC-signed session cookie)
+- [x] Server-side route protection (middleware verifies the signed session/wallet cookies for `/dashboard` and `/brand`)
+- [x] Baseline security headers (CSP, frame-ancestors, nosniff, Permissions-Policy)
 - [x] Public creator tipping profile page with client-validated tipping
 - [x] Creator dashboard shell with Live Stream Settings tab + working overlay page
 - [x] OBS overlay alert widget (with a `?simulate=1` local preview mode)
@@ -393,8 +394,9 @@ This repository is the **frontend only**. Identity linking, tip detection on the
 **Not started:**
 
 - [ ] Chrome Extension for in-page TikTok.com tipping
-- [ ] Signed/encrypted session (currently unsigned, dev-only)
 - [ ] Shared (non-in-memory) rate limiting for multi-instance deploys
+- [ ] Nonce-based CSP (drop `script-src`/`style-src` `'unsafe-inline'`)
+- [ ] Wallet-ownership proof (challenge/response signature) for the brand gate, not just "server saw this public key once"
 
 See the [open issues](../../issues) for the full list of proposed features and known issues.
 
