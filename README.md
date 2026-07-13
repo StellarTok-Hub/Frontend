@@ -318,7 +318,7 @@ Frontend/
 │   │   ├── layout.tsx                  # Root layout — metadataBase, OG/Twitter defaults
 │   │   ├── icon.tsx / apple-icon.tsx   # Generated favicon
 │   │   ├── robots.ts / sitemap.ts      # SEO metadata routes
-│   │   ├── loading.tsx / error.tsx / not-found.tsx
+│   │   ├── error.tsx / not-found.tsx
 │   │   ├── [creatorname]/              # Public tipping profile (Feature 1)
 │   │   │   └── opengraph-image.tsx     # Per-creator dynamic share-card image
 │   │   ├── dashboard/                  # Creator dashboard (gated by DashboardGate + middleware)
