@@ -57,6 +57,24 @@ describe('buildPaymentTransaction', () => {
     expect(op.amount).toBe('5.0000000');
     expect(op.asset.isNative()).toBe(true);
   });
+
+  it('resolves USDC to the configured testnet issuer', async () => {
+    loadAccountMock.mockResolvedValue(new Account(SOURCE, '100'));
+
+    const xdr = await buildPaymentTransaction({
+      sourcePublicKey: SOURCE,
+      destinationPublicKey: DEST,
+      asset: 'USDC',
+      amount: '10',
+    });
+
+    const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase);
+    const [op] = tx.operations;
+    if (op.type !== 'payment') throw new Error('expected a payment operation');
+    expect(op.asset.isNative()).toBe(false);
+    expect(op.asset.getCode()).toBe('USDC');
+    expect(op.asset.getIssuer()).toBe(process.env.STELLAR_USDC_ISSUER_TESTNET);
+  });
 });
 
 describe('describeSubmissionError', () => {
