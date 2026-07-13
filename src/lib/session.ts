@@ -48,11 +48,7 @@ function fromBase64Url(value: string): Uint8Array {
 async function sign(payload: string): Promise<string> {
   const encodedPayload = toBase64Url(new TextEncoder().encode(payload).buffer as ArrayBuffer);
   const key = await hmacKey(getSecret());
-  const signature = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    new TextEncoder().encode(encodedPayload),
-  );
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(encodedPayload));
   return `${encodedPayload}.${toBase64Url(signature)}`;
 }
 
@@ -91,4 +87,31 @@ export async function decodeSession(value: string | undefined): Promise<TikTokPr
   } catch {
     return null;
   }
+}
+
+export const WALLET_SESSION_COOKIE = 'stellartok_wallet';
+
+const STELLAR_PUBLIC_KEY_PATTERN = /^G[A-Z2-7]{55}$/;
+
+/**
+ * Signs a connected Freighter public key into a cookie so the server can
+ * gate /brand on "a wallet is connected" without trusting an unsigned,
+ * client-editable claim. This still isn't proof the visitor *owns* that
+ * wallet (Freighter only hands back the public key, not a signature) — it
+ * just prevents someone from bypassing the gate by setting the cookie
+ * directly instead of going through connectWallet(). See BrandGate for the
+ * remaining limitation.
+ */
+export async function encodeWalletSession(walletAddress: string): Promise<string> {
+  if (!STELLAR_PUBLIC_KEY_PATTERN.test(walletAddress)) {
+    throw new Error('Not a valid Stellar public key.');
+  }
+  return sign(walletAddress);
+}
+
+export async function decodeWalletSession(value: string | undefined): Promise<string | null> {
+  if (!value) return null;
+  const payload = await verify(value);
+  if (!payload || !STELLAR_PUBLIC_KEY_PATTERN.test(payload)) return null;
+  return payload;
 }
