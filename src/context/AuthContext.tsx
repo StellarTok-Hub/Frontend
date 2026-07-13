@@ -77,6 +77,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const address = await connectFreighter();
       setWalletAddress(address);
+      // Best-effort: sets the signed wallet cookie middleware checks for
+      // /brand access. If this fails, the UI still unlocks locally (the
+      // in-memory walletAddress is enough for BrandGate), but a direct
+      // request to a /brand route won't pass middleware until it succeeds.
+      fetch('/api/session/wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: address }),
+      }).catch(() => {});
     } catch (err) {
       if (err instanceof FreighterNotInstalledError) {
         setError('Install the Freighter wallet extension to continue.');
