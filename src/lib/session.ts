@@ -15,12 +15,34 @@ export const SESSION_COOKIE = 'stellartok_session';
  * SESSION_SECRET is set (and long enough) at Node boot for fail-fast
  * behavior; this is a second, Edge-safe read of the same variable.
  */
+let devSecret: string | null = null;
+
+/**
+ * In production this throws if SESSION_SECRET is missing — there is no
+ * safe default for a signing key. Outside production it falls back to a
+ * random, process-lifetime secret instead, so `npm run dev`/`npm test`
+ * keep working with zero config, matching this app's "runs fully on
+ * fixtures without env config" setup story. That fallback secret changes
+ * on every restart (sessions won't survive one) and is never used when
+ * NODE_ENV=production, so it's not a production security gap.
+ */
 function getSecret(): string {
   const secret = process.env.SESSION_SECRET;
-  if (!secret) {
+  if (secret) return secret;
+
+  if (process.env.NODE_ENV === 'production') {
     throw new Error('SESSION_SECRET is not set — cannot sign or verify session cookies.');
   }
-  return secret;
+
+  if (!devSecret) {
+    devSecret = crypto.randomUUID() + crypto.randomUUID();
+    console.warn(
+      'SESSION_SECRET is not set — using a random development-only secret ' +
+        '(sessions will not survive a server restart). Set SESSION_SECRET ' +
+        'before deploying to production.',
+    );
+  }
+  return devSecret;
 }
 
 async function hmacKey(secret: string): Promise<CryptoKey> {
