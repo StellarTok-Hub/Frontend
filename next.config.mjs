@@ -24,6 +24,34 @@ const securityHeaders = [
     key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=(), payment=()',
   },
+  {
+    /**
+     * script-src/style-src keep 'unsafe-inline' — Next.js App Router
+     * injects inline <script> tags for RSC/hydration payloads on every
+     * page, and a nonce-based CSP (the alternative to 'unsafe-inline')
+     * needs per-request nonce plumbing through middleware that's a bigger
+     * change than this pass covers. The directives that *do* matter for
+     * this app's actual risk (no framing, no plugin content, no silent
+     * form hijack to a third-party origin) are enforced without it:
+     * frame-ancestors backs up X-Frame-Options, object-src blocks legacy
+     * plugin content, base-uri/form-action stop a base-tag or form-target
+     * injection from redirecting page context or form submissions
+     * off-origin.
+     */
+    key: 'Content-Security-Policy',
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "font-src 'self' data:",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; '),
+  },
 ];
 
 /** @type {import('next').NextConfig} */
