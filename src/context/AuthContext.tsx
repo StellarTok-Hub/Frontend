@@ -98,7 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    await fetch('/api/session', { method: 'DELETE' }).catch(() => {});
+    await Promise.all([
+      fetch('/api/session', { method: 'DELETE' }).catch(() => {}),
+      fetch('/api/session/wallet', { method: 'DELETE' }).catch(() => {}),
+    ]);
     setTiktokProfile(null);
     setWalletAddress(null);
     setIsLinkedRemotely(false);
