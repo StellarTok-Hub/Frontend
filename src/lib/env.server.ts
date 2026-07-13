@@ -24,10 +24,18 @@ const schema = z.object({
    * module, because it's also loaded by `src/middleware.ts` on the Edge
    * runtime, where this Zod-validated module (guarded to Node-only in
    * `src/instrumentation.ts`) isn't safe to import.
+   *
+   * Only hard-required in production, matching session.ts's own fallback:
+   * outside production, session.ts signs with a random per-process secret
+   * instead of failing, so `npm run dev`/`build`/`test` keep working with
+   * zero config.
    */
   sessionSecret: z
     .string()
-    .min(32, 'SESSION_SECRET must be at least 32 characters — generate one with `openssl rand -base64 32`.'),
+    .refine(
+      (value) => process.env.NODE_ENV !== 'production' || value.length >= 32,
+      'SESSION_SECRET must be at least 32 characters in production — generate one with `openssl rand -base64 32`.',
+    ),
 });
 
 function parseOrThrow(): z.infer<typeof schema> {
