@@ -25,3 +25,10 @@ jobs:
       - run: npm test
 
       - run: npm run build
+        env:
+          # `next build` runs with NODE_ENV=production, where SESSION_SECRET
+          # is hard-required (see src/lib/env.server.ts) — this is a
+          # CI-only placeholder to satisfy that check, not a real secret.
+          # A real deployment must set its own SESSION_SECRET via the
+          # hosting platform, generated with `openssl rand -base64 32`.
+          SESSION_SECRET: ci-build-placeholder-not-a-real-secret-00000000
