@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { encodeWalletSession, WALLET_SESSION_COOKIE } from '@/lib/session';
+import {
+  encodeWalletSession,
+  WALLET_SESSION_COOKIE,
+  WALLET_SESSION_MAX_AGE_SECONDS,
+} from '@/lib/session';
 import { parseJsonBody } from '@/lib/request-json';
 
 /**
@@ -29,7 +33,7 @@ export async function POST(request: NextRequest) {
     httpOnly: true,
     secure: request.nextUrl.protocol === 'https:',
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: WALLET_SESSION_MAX_AGE_SECONDS,
     path: '/',
   });
   return response;

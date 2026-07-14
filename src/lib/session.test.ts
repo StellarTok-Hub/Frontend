@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import { decodeSession, decodeWalletSession, encodeSession, encodeWalletSession } from './session';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  decodeSession,
+  decodeWalletSession,
+  encodeSession,
+  encodeWalletSession,
+  SESSION_MAX_AGE_SECONDS,
+  WALLET_SESSION_MAX_AGE_SECONDS,
+} from './session';
 import type { TikTokProfile } from './tiktok';
 
 const profile: TikTokProfile = {
@@ -53,6 +60,26 @@ describe('encodeSession / decodeSession', () => {
   it('rejects a value that is missing the signature segment entirely', async () => {
     expect(await decodeSession('not-a-signed-cookie')).toBeNull();
   });
+
+  it('rejects a session older than SESSION_MAX_AGE_SECONDS, even with a valid signature', async () => {
+    const now = Date.now();
+    const spy = vi.spyOn(Date, 'now').mockReturnValue(now - (SESSION_MAX_AGE_SECONDS * 1000 + 1));
+    const cookie = await encodeSession(profile);
+    spy.mockReturnValue(now);
+    expect(await decodeSession(cookie)).toBeNull();
+    spy.mockRestore();
+  });
+
+  it('accepts a session just under SESSION_MAX_AGE_SECONDS old', async () => {
+    const now = Date.now();
+    const spy = vi
+      .spyOn(Date, 'now')
+      .mockReturnValue(now - (SESSION_MAX_AGE_SECONDS * 1000 - 1000));
+    const cookie = await encodeSession(profile);
+    spy.mockReturnValue(now);
+    expect(await decodeSession(cookie)).toEqual(profile);
+    spy.mockRestore();
+  });
 });
 
 describe('encodeWalletSession / decodeWalletSession', () => {
@@ -69,5 +96,16 @@ describe('encodeWalletSession / decodeWalletSession', () => {
     const cookie = await encodeWalletSession(VALID_WALLET_ADDRESS);
     const [payload, signature] = splitCookie(cookie);
     expect(await decodeWalletSession(`${payload}.${flipFirstChar(signature)}`)).toBeNull();
+  });
+
+  it('rejects a wallet session older than WALLET_SESSION_MAX_AGE_SECONDS', async () => {
+    const now = Date.now();
+    const spy = vi
+      .spyOn(Date, 'now')
+      .mockReturnValue(now - (WALLET_SESSION_MAX_AGE_SECONDS * 1000 + 1));
+    const cookie = await encodeWalletSession(VALID_WALLET_ADDRESS);
+    spy.mockReturnValue(now);
+    expect(await decodeWalletSession(cookie)).toBeNull();
+    spy.mockRestore();
   });
 });

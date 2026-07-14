@@ -3,6 +3,22 @@ import type { TikTokProfile } from './tiktok';
 export const SESSION_COOKIE = 'stellartok_session';
 
 /**
+ * Shared by both the cookie's `Max-Age` attribute (browser-enforced) and an
+ * `iat` claim embedded in the signed payload itself (server-enforced). The
+ * cookie attribute alone isn't enough: a cookie value extracted from the
+ * browser and replayed directly against the API (e.g. via curl) carries no
+ * `Max-Age` at all, so without a claim inside the signed payload a stolen
+ * cookie would verify forever. Both cookies share one duration since neither
+ * has a real reason to outlive the other.
+ */
+export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+export const WALLET_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+
+function isExpired(issuedAtMs: number, maxAgeSeconds: number): boolean {
+  return Date.now() - issuedAtMs > maxAgeSeconds * 1000;
+}
+
+/**
  * HMAC-signs session cookie values so a client can't forge or tamper with
  * the identity they claim to be. Uses Web Crypto (`crypto.subtle`), not
  * Node's `crypto` module — this file is imported from `src/middleware.ts`,
@@ -103,7 +119,7 @@ async function verify(value: string): Promise<string | null> {
 }
 
 export async function encodeSession(profile: TikTokProfile): Promise<string> {
-  return sign(JSON.stringify(profile));
+  return sign(JSON.stringify({ ...profile, iat: Date.now() }));
 }
 
 export async function decodeSession(value: string | undefined): Promise<TikTokProfile | null> {
@@ -111,8 +127,9 @@ export async function decodeSession(value: string | undefined): Promise<TikTokPr
   try {
     const payload = await verify(value);
     if (!payload) return null;
-    const parsed = JSON.parse(payload);
+    const { iat, ...parsed } = JSON.parse(payload);
     if (typeof parsed?.openId !== 'string') return null;
+    if (typeof iat !== 'number' || isExpired(iat, SESSION_MAX_AGE_SECONDS)) return null;
     return parsed as TikTokProfile;
   } catch {
     return null;
@@ -136,12 +153,19 @@ export async function encodeWalletSession(walletAddress: string): Promise<string
   if (!STELLAR_PUBLIC_KEY_PATTERN.test(walletAddress)) {
     throw new Error('Not a valid Stellar public key.');
   }
-  return sign(walletAddress);
+  return sign(JSON.stringify({ addr: walletAddress, iat: Date.now() }));
 }
 
 export async function decodeWalletSession(value: string | undefined): Promise<string | null> {
   if (!value) return null;
   const payload = await verify(value);
-  if (!payload || !STELLAR_PUBLIC_KEY_PATTERN.test(payload)) return null;
-  return payload;
+  if (!payload) return null;
+  try {
+    const { addr, iat } = JSON.parse(payload);
+    if (typeof addr !== 'string' || !STELLAR_PUBLIC_KEY_PATTERN.test(addr)) return null;
+    if (typeof iat !== 'number' || isExpired(iat, WALLET_SESSION_MAX_AGE_SECONDS)) return null;
+    return addr;
+  } catch {
+    return null;
+  }
 }

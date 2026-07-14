@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchTikTokProfile } from '@/lib/tiktok';
-import { encodeSession, SESSION_COOKIE } from '@/lib/session';
+import { encodeSession, SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } from '@/lib/session';
 import { serverEnv } from '@/lib/env.server';
 
 const TIKTOK_TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/';
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       httpOnly: true,
       secure: request.nextUrl.protocol === 'https:',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: SESSION_MAX_AGE_SECONDS,
       path: '/',
     });
     return response;
