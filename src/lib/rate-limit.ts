@@ -1,10 +1,15 @@
 /**
  * Minimal in-memory sliding-window rate limiter for API routes that touch
  * the Stellar network. This resets on every server restart and doesn't
- * share state across instances — fine for a single-instance deploy, but a
- * real production deployment behind multiple instances needs a shared store
- * (e.g. Upstash Redis) instead, or this limiter becomes bypassable simply by
- * hitting a different instance.
+ * share state across instances. That isn't a hypothetical multi-instance
+ * edge case to plan for later — Vercel's default deploy topology for this
+ * app already runs multiple instances/regions behind the scenes, so as
+ * shipped, a caller can already get a fresh 20-requests/minute allowance
+ * simply by landing on a different instance. Treat this limiter as UX
+ * (discourages accidental double-submits, absorbs light abuse) rather than
+ * a real abuse control until it's backed by a shared store (e.g. Upstash
+ * Redis) — do not rely on it as the thing standing between this app and a
+ * request-flooding attacker.
  */
 
 const WINDOW_MS = 60_000;
