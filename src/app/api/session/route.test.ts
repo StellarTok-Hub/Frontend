@@ -26,6 +26,23 @@ function sessionRequest(cookies: Record<string, string> = {}): NextRequest {
   return new NextRequest('http://localhost/api/session', { headers });
 }
 
+/**
+ * Flips the *first* character of a signed cookie's signature segment.
+ * Flipping the last character is unreliable — see the identical helper
+ * (and its full explanation) in src/lib/session.test.ts: the final
+ * character of a base64url-encoded HMAC-SHA256 signature can encode
+ * "don't care" padding bits that decode discards, so two different last
+ * characters can legitimately decode to the same bytes. The first
+ * character is always byte-aligned and always significant.
+ */
+function tamperSignature(cookie: string): string {
+  const separatorIndex = cookie.lastIndexOf('.');
+  const payload = cookie.slice(0, separatorIndex);
+  const signature = cookie.slice(separatorIndex + 1);
+  const flipped = (signature[0] === 'a' ? 'b' : 'a') + signature.slice(1);
+  return `${payload}.${flipped}`;
+}
+
 describe('GET /api/session', () => {
   it('returns nulls when there are no session cookies', async () => {
     const response = await GET(sessionRequest());
@@ -46,7 +63,7 @@ describe('GET /api/session', () => {
 
   it('returns null for a tampered session cookie without throwing', async () => {
     const sessionCookie = await encodeSession(profile);
-    const tampered = sessionCookie.slice(0, -1) + (sessionCookie.endsWith('a') ? 'b' : 'a');
+    const tampered = tamperSignature(sessionCookie);
     const response = await GET(sessionRequest({ [SESSION_COOKIE]: tampered }));
     expect(await response.json()).toEqual({ tiktokProfile: null, walletAddress: null });
   });
