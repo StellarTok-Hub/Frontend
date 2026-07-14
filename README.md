@@ -9,7 +9,7 @@
 [![Freighter](https://img.shields.io/badge/Wallet-Freighter-blue)](https://www.freighter.app/)
 [![CI](https://img.shields.io/badge/CI-lint%20%C2%B7%20typecheck%20%C2%B7%20test%20%C2%B7%20build-brightgreen)]()
 [![Status](https://img.shields.io/badge/status-frontend--complete%2C%20no%20backend%20yet-yellow)]()
-[![License](https://img.shields.io/badge/license-TBD-lightgrey)]()
+[![License](https://img.shields.io/badge/license-proprietary-lightgrey)]()
 
 [About](#about) •
 [Architecture & Flows](#architecture--flows) •
@@ -417,7 +417,7 @@ This project is under active early development. If you're picking up work here, 
 
 ## License
 
-License to be determined.
+All rights reserved. This is proprietary, closed-source software — see [LICENSE](./LICENSE). No license to use, copy, modify, or distribute this code is granted except as separately agreed in writing with StellarTok.
 
 ## Contact
 
