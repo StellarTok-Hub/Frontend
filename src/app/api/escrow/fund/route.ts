@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { buildPaymentTransaction, InvalidPaymentError } from '@/lib/stellar';
 import { getClientKey, isRateLimited } from '@/lib/rate-limit';
 import { parseJsonBody } from '@/lib/request-json';
+import { ownsSourcePublicKey } from '@/lib/wallet-auth';
 import type { StellarAsset } from '@/types';
 
 interface EscrowFundRequestBody {
@@ -32,6 +33,13 @@ export async function POST(request: NextRequest) {
 
   if (!sourcePublicKey || !destinationPublicKey || !asset || !amount) {
     return NextResponse.json({ error: 'Missing required escrow funding fields.' }, { status: 400 });
+  }
+
+  if (!(await ownsSourcePublicKey(request, sourcePublicKey))) {
+    return NextResponse.json(
+      { error: 'sourcePublicKey must match your connected wallet session.' },
+      { status: 401 },
+    );
   }
 
   try {
