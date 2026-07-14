@@ -206,7 +206,7 @@ sequenceDiagram
 
 - 🔐 **Auth** — real TikTok Login Kit OAuth (CSRF-protected via a state cookie) plus Freighter wallet connect. `AuthContext` derives a linked identity client-side the moment both are present, and best-effort syncs it to the backend.
 - 🛡️ **Route protection** — middleware verifies a signed session cookie before allowing `/dashboard`, and a signed wallet cookie before allowing `/brand`; both redirect unauthenticated requests before the page ever renders, not just after a client-side check.
-- 🔒 **Baseline security headers** — CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy` applied to every response (`next.config.mjs`), aimed at the pages that request a wallet-transaction signature.
+- 🔒 **Baseline security headers** — a nonce-based CSP (no `unsafe-inline` on `script-src`/`style-src`; the nonce is generated per-request in `src/middleware.ts`), plus `X-Frame-Options: DENY`, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy` applied to every response, aimed at the pages that request a wallet-transaction signature. The nonce requirement means every page renders dynamically per-request (`export const dynamic = 'force-dynamic'` in `src/app/layout.tsx`) rather than being served as prebuilt static HTML — see the note in Known simplifications.
 - 💸 **Public tipping profile** — `stellartok.app/creatorname` page rendering a creator's latest TikTok videos with a "Send Tip" action per video, with instant client-side amount validation and Horizon errors (e.g. missing trustlines) translated into plain language.
 - 🎮 **Creator dashboard**
   - _Live Stream Settings_ — OBS Browser Source URL, alert-rule config, a working live overlay page with a `?simulate=1` preview mode.
@@ -372,6 +372,7 @@ Frontend/
 - The in-memory rate limiter (`src/lib/rate-limit.ts`) doesn't share state across instances. This isn't a future concern to plan for — Vercel's default deploy topology for this app is already multi-instance, so the limiter is bypassable today simply by hitting a different instance; treat it as UX, not an abuse control, until it's backed by a shared store. It now keys on the proxy-appended `x-forwarded-for` hop rather than the client-supplied one (which was trivially spoofable), assuming a single trusted reverse proxy in front of the app.
 - The best-effort backend sync in `AuthContext` (`linkIdentity`) fails silently when there's no backend — the identity link still works locally (TikTok session + wallet are enough to unlock the UI), it just isn't persisted remotely yet.
 - USDC issuer addresses are intentionally unset by default (`STELLAR_USDC_ISSUER_*`) — verify independently before setting them.
+- The nonce-based CSP (`src/middleware.ts`) requires every page to render dynamically per-request, so `src/app/layout.tsx` sets `export const dynamic = 'force-dynamic'`. That's a deliberate trade: this app no longer serves any route (including the public `/creatorname` tipping page — its highest-traffic surface) as prebuilt static HTML from the edge. Given that page's entire job is to safely request a wallet-signing action, protecting it with a real CSP was judged worth the latency cost; revisit only alongside a plan for per-route CSP scoping if tipping-page load time becomes a measured problem.
 
 ### Repo scope
 
@@ -383,7 +384,7 @@ This repository is the **frontend only**. Identity linking, tip detection on the
 
 - [x] TikTok Login Kit OAuth + Freighter connect flow (CSRF-protected, HMAC-signed session cookie)
 - [x] Server-side route protection (middleware verifies the signed session/wallet cookies for `/dashboard` and `/brand`)
-- [x] Baseline security headers (CSP, frame-ancestors, nosniff, Permissions-Policy)
+- [x] Baseline security headers (nonce-based CSP, frame-ancestors, nosniff, Permissions-Policy)
 - [x] Public creator tipping profile page with client-validated tipping
 - [x] Creator dashboard shell with Live Stream Settings tab + working overlay page
 - [x] OBS overlay alert widget (with a `?simulate=1` local preview mode)
@@ -402,7 +403,6 @@ This repository is the **frontend only**. Identity linking, tip detection on the
 
 - [ ] Chrome Extension for in-page TikTok.com tipping
 - [ ] Shared (non-in-memory) rate limiting — needed now, not just at scale; the current limiter is already bypassable on Vercel's default multi-instance deploy
-- [ ] Nonce-based CSP (drop `script-src`/`style-src` `'unsafe-inline'`)
 - [ ] Wallet-ownership proof (challenge/response signature) for the brand gate, not just "server saw this public key once"
 
 See the [open issues](../../issues) for the full list of proposed features and known issues.

@@ -7,7 +7,7 @@ import {
   WALLET_SESSION_COOKIE,
 } from '@/lib/session';
 import type { TikTokProfile } from '@/lib/tiktok';
-import { middleware } from './middleware';
+import { config, middleware } from './middleware';
 
 const profile: TikTokProfile = {
   openId: 'creator-123',
@@ -33,6 +33,23 @@ function isRedirectToSignIn(response: Awaited<ReturnType<typeof middleware>>): b
   return url.pathname === '/' && url.searchParams.get('error') === 'sign_in_required';
 }
 
+/**
+ * Flips the *first* character of a signed cookie's signature segment.
+ * Flipping the last character is unreliable — see the identical helper
+ * (and its full explanation) in src/lib/session.test.ts: the final
+ * character of a base64url-encoded HMAC-SHA256 signature can encode
+ * "don't care" padding bits that decode discards, so two different last
+ * characters can legitimately decode to the same bytes. The first
+ * character is always byte-aligned and always significant.
+ */
+function tamperSignature(cookie: string): string {
+  const separatorIndex = cookie.lastIndexOf('.');
+  const payload = cookie.slice(0, separatorIndex);
+  const signature = cookie.slice(separatorIndex + 1);
+  const flipped = (signature[0] === 'a' ? 'b' : 'a') + signature.slice(1);
+  return `${payload}.${flipped}`;
+}
+
 describe('middleware — /dashboard (guardDashboard)', () => {
   it('redirects to sign-in when there is no session cookie', async () => {
     const response = await middleware(requestFor('/dashboard'));
@@ -41,7 +58,7 @@ describe('middleware — /dashboard (guardDashboard)', () => {
 
   it('redirects to sign-in when the session cookie is tampered', async () => {
     const valid = await encodeSession(profile);
-    const tampered = valid.slice(0, -1) + (valid.endsWith('a') ? 'b' : 'a');
+    const tampered = tamperSignature(valid);
     const response = await middleware(requestFor('/dashboard', { [SESSION_COOKIE]: tampered }));
     expect(isRedirectToSignIn(response)).toBe(true);
   });
@@ -70,7 +87,7 @@ describe('middleware — /brand (guardBrand)', () => {
 
   it('redirects to sign-in when the wallet-session cookie is tampered', async () => {
     const valid = await encodeWalletSession(WALLET_ADDRESS);
-    const tampered = valid.slice(0, -1) + (valid.endsWith('a') ? 'b' : 'a');
+    const tampered = tamperSignature(valid);
     const response = await middleware(requestFor('/brand', { [WALLET_SESSION_COOKIE]: tampered }));
     expect(isRedirectToSignIn(response)).toBe(true);
   });
@@ -86,5 +103,54 @@ describe('middleware — /brand (guardBrand)', () => {
     const cookie = await encodeSession(profile);
     const response = await middleware(requestFor('/brand', { [SESSION_COOKIE]: cookie }));
     expect(isRedirectToSignIn(response)).toBe(true);
+  });
+});
+
+describe('middleware — Content-Security-Policy nonce', () => {
+  function extractNonce(csp: string): string | null {
+    const match = csp.match(/script-src[^;]*'nonce-([^']+)'/);
+    return match?.[1] ?? null;
+  }
+
+  it('attaches a nonce-based CSP (no unsafe-inline) to an allowed page response', async () => {
+    const response = await middleware(requestFor('/'));
+    const csp = response.headers.get('Content-Security-Policy');
+    expect(csp).toBeTruthy();
+    expect(csp).not.toContain('unsafe-inline');
+    expect(extractNonce(csp!)).not.toBeNull();
+  });
+
+  it('attaches a CSP header even to a sign-in redirect', async () => {
+    const response = await middleware(requestFor('/dashboard'));
+    expect(isRedirectToSignIn(response)).toBe(true);
+    expect(response.headers.get('Content-Security-Policy')).toContain("script-src 'self'");
+  });
+
+  it('uses a different nonce on every request', async () => {
+    const first = extractNonce(
+      (await middleware(requestFor('/'))).headers.get('Content-Security-Policy')!,
+    );
+    const second = extractNonce(
+      (await middleware(requestFor('/'))).headers.get('Content-Security-Policy')!,
+    );
+    expect(first).not.toEqual(second);
+  });
+});
+
+describe('middleware config.matcher', () => {
+  const { source } = config.matcher[0] as { source: string };
+  const matcher = new RegExp(`^${source}$`);
+
+  it('matches ordinary pages', () => {
+    expect(matcher.test('/')).toBe(true);
+    expect(matcher.test('/dashboard')).toBe(true);
+    expect(matcher.test('/some-creator')).toBe(true);
+  });
+
+  it('excludes API routes and Next internals so the CSP nonce work is skipped there', () => {
+    expect(matcher.test('/api/tip')).toBe(false);
+    expect(matcher.test('/_next/static/chunk.js')).toBe(false);
+    expect(matcher.test('/_next/image')).toBe(false);
+    expect(matcher.test('/favicon.ico')).toBe(false);
   });
 });

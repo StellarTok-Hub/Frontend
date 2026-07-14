@@ -49,7 +49,7 @@ These are intentional, documented shortcuts — not things to silently "fix" wit
 - Brand identity is "a connected wallet" backed by a signed cookie (`encodeWalletSession`), checked in middleware for `/brand` — but there's still no brand account system, and no proof the visitor holds the wallet's private key, only that the server saw Freighter hand back that public key once.
 - The rate limiter (`src/lib/rate-limit.ts`) is in-memory and per-instance — on Vercel's default multi-instance deploy this is bypassable today, not just at scale, so treat it as UX rather than a real abuse control until it's backed by a shared store. It keys on the proxy-appended `x-forwarded-for` hop, which assumes a single trusted reverse proxy in front of the app.
 - USDC issuer addresses are unset by default — see the comment in `src/lib/env.server.ts` before setting them.
-- The CSP (`next.config.mjs`) keeps `'unsafe-inline'` for `script-src`/`style-src` — Next.js App Router's inline hydration scripts need it unless a nonce-based CSP is wired through middleware, which hasn't been done yet.
+- The CSP (`src/middleware.ts`) is nonce-based — no `'unsafe-inline'` on `script-src`/`style-src`. This requires a fresh nonce per request embedded in the actual HTML, so `src/app/layout.tsx` sets `export const dynamic = 'force-dynamic'`, opting every page out of static prerendering. That includes the public `/creatorname` tipping page, this app's highest-traffic route — a deliberate trade given that page exists to request a wallet-signing action.
 
 ## Tests
 
