@@ -86,16 +86,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const address = await connectFreighter();
-      setWalletAddress(address);
-      // Best-effort: sets the signed wallet cookie middleware checks for
-      // /brand access. If this fails, the UI still unlocks locally (the
-      // in-memory walletAddress is enough for BrandGate), but a direct
-      // request to a /brand route won't pass middleware until it succeeds.
-      fetch('/api/session/wallet', {
+      // Awaited, not fire-and-forget: this sets the signed wallet cookie
+      // that middleware checks for /brand *and* that /api/tip and
+      // /api/escrow/fund now require to match the request's
+      // sourcePublicKey. Setting local walletAddress before this resolves
+      // would let a caller reach those endpoints in the window before the
+      // cookie exists, so wait for it — this is a same-origin route on this
+      // app's own server, not the separate (and not-yet-built) StellarTok
+      // backend, so there's no offline-first reason to treat it as
+      // best-effort the way `linkIdentity` below is.
+      const response = await fetch('/api/session/wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress: address }),
-      }).catch(() => {});
+      });
+      if (!response.ok) {
+        throw new Error('Could not establish a wallet session with the server.');
+      }
+      setWalletAddress(address);
     } catch (err) {
       if (err instanceof FreighterNotInstalledError) {
         setError('Install the Freighter wallet extension to continue.');
