@@ -409,9 +409,9 @@ See the [open issues](../../issues) for the full list of proposed features and k
 
 ## Contributing
 
-This project is under active early development. If you're picking up work here, check the current issues/board for what's in progress before starting a new feature to avoid overlap. See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, scripts, and the conventions this codebase follows (the mock-data-fallback pattern, server-only modules, known simplifications).
+This project is under active early development and is proprietary, closed-source software (see [License](#license)) — there is no public fork/PR workflow. If you have write access to this repository and are picking up work here, check the current issues/board for what's in progress before starting a new feature to avoid overlap. See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, scripts, and the conventions this codebase follows (the mock-data-fallback pattern, server-only modules, known simplifications).
 
-1. Fork the repo and create your branch from `main`
+1. Create a branch off `main` in this repository
 2. Make your changes
 3. Open a pull request describing what changed and why
 
